@@ -1,47 +1,60 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-let portfolioState = [
-  { id: '1', ticker: 'YPFD', type: 'Acción AR', amount: 40750, yield: 48.66, status: 'amber', action: 'Proteger Ganancia' },
-  { id: '2', ticker: 'PAMP', type: 'Acción AR', amount: 40440, yield: 4.90, status: 'green', action: 'Mantener' },
-  { id: '3', ticker: 'AAPL', type: 'CEDEAR', amount: 49360, yield: -2.28, status: 'green', action: 'Mantener' },
-  { id: '4', ticker: 'SPY', type: 'ETF CEDEAR', amount: 40720, yield: 0.01, status: 'green', action: 'Mantener' },
-  { id: '5', ticker: 'GOOGL', type: 'CEDEAR', amount: 28470, yield: -2.41, status: 'amber', action: 'Monitorear' },
-  { id: '6', ticker: 'AMZN', type: 'CEDEAR', amount: 22960, yield: 4.79, status: 'green', action: 'Mantener' },
-  { id: '7', ticker: 'NVDA', type: 'CEDEAR', amount: 14280, yield: 2.30, status: 'green', action: 'Mantener' },
-  { id: '8', ticker: 'RGTI', type: 'CEDEAR Quantum', amount: 14280, yield: 8.41, status: 'red', action: 'Vender / Reducir' },
-  { id: '9', ticker: 'TXAR', type: 'Acción AR', amount: 2091, yield: 2.53, status: 'amber', action: 'Neutral' }
-];
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET() {
-  return NextResponse.json(portfolioState);
+  const { data, error } = await supabase
+    .from('portfolio')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
   const { ticker, amount, type } = body;
-  const existingIndex = portfolioState.findIndex(p => p.ticker.toUpperCase() === ticker.toUpperCase());
-  
-  if (existingIndex > -1) {
-    portfolioState[existingIndex].amount = Number(amount);
-    portfolioState[existingIndex].type = type;
+
+  const { data: existing } = await supabase
+    .from('portfolio')
+    .select('*')
+    .eq('ticker', ticker.toUpperCase())
+    .single();
+
+  if (existing) {
+    await supabase
+      .from('portfolio')
+      .update({ amount: Number(amount), type })
+      .eq('ticker', ticker.toUpperCase());
   } else {
-    portfolioState.push({
-      id: Date.now().toString(),
-      ticker: ticker.toUpperCase(),
-      type,
-      amount: Number(amount),
-      yield: 0.00,
-      status: 'green',
-      action: 'Mantener'
-    });
+    await supabase.from('portfolio').insert([
+      {
+        ticker: ticker.toUpperCase(),
+        type,
+        amount: Number(amount),
+        yield: 0.0,
+        status: 'green',
+        action: 'Mantener'
+      }
+    ]);
   }
 
-  return NextResponse.json({ success: true, portfolio: portfolioState });
+  const { data: updated } = await supabase.from('portfolio').select('*');
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const ticker = searchParams.get('ticker');
-  portfolioState = portfolioState.filter(p => p.ticker.toUpperCase() !== ticker?.toUpperCase());
-  return NextResponse.json({ success: true, portfolio: portfolioState });
+
+  if (ticker) {
+    await supabase.from('portfolio').delete().eq('ticker', ticker.toUpperCase());
+  }
+
+  const { data: updated } = await supabase.from('portfolio').select('*');
+  return NextResponse.json(updated);
 }
