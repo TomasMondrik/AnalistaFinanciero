@@ -1,75 +1,90 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  // Lista de empresas y variables macro permitidas
-  const ALLOWED_KEYWORDS = [
-    'ypf', 'pampa', 'pamp', 'ternium', 'txar', 'merval', 'cedear', 'cedears',
-    'apple', 'aapl', 'nvidia', 'nvda', 'google', 'googl', 'amazon', 'amzn',
-    'spy', 's&p 500', 'fed', 'reserva federal', 'petroleo', 'wti', 'brent',
-    'dolar ccl', 'dolar mep', 'vaca meerta', 'rigetti', 'rgti'
-  ];
+  // Hora actual de Argentina
+  const now = new Date();
+  const formatTime = (minutesAgo: number) => {
+    const d = new Date(now.getTime() - minutesAgo * 60000);
+    return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
 
-  // Feed de noticias enfocado exclusivamente en mercado y empresas operables
-  const rawFinancialNews = [
+  const newsData = [
+    // --- TUS EMPRESAS (Pestaña "Tus Empresas") ---
     {
-      id: Date.now().toString(),
+      id: '1',
       source: 'El Cronista • Argentina',
-      time: 'Hace 12 min',
-      elapsed: 'En vivo',
-      title: 'YPF acelera desembolsos en Vaca Muerta y consolida flujo para exportación',
+      time: formatTime(15),
+      elapsed: 'hace 15 min',
+      title: 'YPF amplía la capacidad de transporte de crudo desde Vaca Muerta',
       impactTitle: 'Impacto directo en YPFD / PAMP:',
-      impactDescription: 'Aumento de capacidad operativa. Noticia positiva para los márgenes en dólares de energéticas locales.',
+      impactDescription: 'Mejora los volúmenes de evacuación y acelera la generación de flujo de caja libre en dólares.',
       type: 'MINE',
       weight: 10,
-      isCritical: true,
       ticker: 'YPFD'
     },
     {
-      id: (Date.now() + 1).toString(),
-      source: 'Bloomberg • Wall Street',
-      time: 'Hace 28 min',
-      elapsed: 'En vivo',
-      title: 'NVIDIA muestra demanda sostenida de microprocesadores para datacenters',
-      impactTitle: 'Impacto CEDEAR NVDA:',
-      impactDescription: 'Sostiene proyecciones de balance sobre el sector semiconductores en Wall Street.',
+      id: '2',
+      source: 'Wall Street Journal • EE.UU.',
+      time: formatTime(32),
+      elapsed: 'hace 32 min',
+      title: 'NVIDIA anuncia nuevo chip H200 enfocado en eficiencia energética de Datacenters',
+      impactTitle: 'Impacto directo en NVDA:',
+      impactDescription: 'Sostiene el monopolio en infraestructura de IA y mantiene proyecciones de márgenes brutos por encima del 70%.',
       type: 'MINE',
       weight: 9,
-      isCritical: false,
       ticker: 'NVDA'
     },
     {
-      id: (Date.now() + 2).toString(),
-      source: 'Ámbito Financiero • Macro',
-      time: 'Hace 45 min',
-      elapsed: 'En vivo',
-      title: 'El CCL cede mientras el BCRA continúa la acumulación de reservas',
-      impactTitle: 'Impacto Brecha & CEDEARs:',
-      impactDescription: 'La baja temporal del contado con liqui ajusta cotizaciones en pesos de activos del exterior.',
-      type: 'EXPLORE',
+      id: '3',
+      source: 'Bloomberg • Mercados',
+      time: formatTime(50),
+      elapsed: 'hace 50 min',
+      title: 'Pampa Energía reporta incremento del 14% en producción de gas natural',
+      impactTitle: 'Impacto directo en PAMP:',
+      impactDescription: 'Mayor volumen colocado en Plan Gas a tarifas consolidadas. Favorable para el balance del trimestre.',
+      type: 'MINE',
       weight: 8,
-      isCritical: false,
+      ticker: 'PAMP'
+    },
+    {
+      id: '4',
+      source: 'CNBC • Tech',
+      time: formatTime(75),
+      elapsed: 'hace 1h 15m',
+      title: 'Apple negocia alianza clave para integrar nuevos modelos de IA en iOS',
+      impactTitle: 'Impacto directo en AAPL:',
+      impactDescription: 'Catalizador de renovación de dispositivos para el próximo ciclo de ventas.',
+      type: 'MINE',
+      weight: 8,
+      ticker: 'AAPL'
+    },
+
+    // --- MERCADO GENERAL (Pestaña "Mercado General") ---
+    {
+      id: '5',
+      source: 'Ámbito Financiero • Macro',
+      time: formatTime(20),
+      elapsed: 'hace 20 min',
+      title: 'El Contado con Liqui (CCL) opera estable mientras el BCRA suma reservas',
+      impactTitle: 'Impacto Macro / CEDEARs:',
+      impactDescription: 'La estabilidad cambiaria reduce la volatilidad en pesos del SPY y de las acciones extranjeras.',
+      type: 'EXPLORE',
+      weight: 7,
       ticker: 'CCL'
     },
     {
-      id: (Date.now() + 3).toString(),
+      id: '6',
       source: 'Reuters • Internacional',
-      time: 'Hace 1h 10m',
-      elapsed: 'En vivo',
-      title: 'Petróleo WTI rebota tras tensiones en Medio Oriente y sostiene a las petroleras',
-      impactTitle: 'Impacto Macro Energético:',
-      impactDescription: 'Suba de crudo internacional beneficia valuaciones de balances del sector energético.',
-      type: 'MINE',
-      weight: 8,
-      isCritical: false,
-      ticker: 'YPFD'
+      time: formatTime(110),
+      elapsed: 'hace 1h 50m',
+      title: 'La Reserva Federal señala prudencia con la baja de tasas de interés',
+      impactTitle: 'Impacto Tasa EE.UU.:',
+      impactDescription: 'Afecta la tasa de descuento de las tecnológicas globales en el S&P 500.',
+      type: 'EXPLORE',
+      weight: 7,
+      ticker: 'FED'
     }
   ];
 
-  // Filtro estricto: solo pasan noticias que toquen empresas cotizantes o variables macro
-  const filteredNews = rawFinancialNews.filter(article => {
-    const contentToSearch = `${article.title} ${article.impactDescription}`.toLowerCase();
-    return ALLOWED_KEYWORDS.some(keyword => contentToSearch.includes(keyword));
-  });
-
-  return NextResponse.json(filteredNews);
+  return NextResponse.json(newsData);
 }

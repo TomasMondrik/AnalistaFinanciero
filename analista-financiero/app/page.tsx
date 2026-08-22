@@ -43,11 +43,11 @@ export default function Home() {
 
   const totalPortfolio = portfolio.reduce((acc, item) => acc + Number(item.amount), 0);
 
-  // Oportunidades sugeridas por el motor de análisis
+  // Oportunidades con aclaración de Upside
   const opportunities = [
-    { ticker: 'PAMP', name: 'Pampa Energía', catalyst: 'Balance Q2 masivo + Tarifas', target: '+22.4%', status: 'Alta Convicción', thesis: 'Fuerte generación de caja en dólares por exportación de gas y capacidad de transporte habilitada.' },
-    { ticker: 'GOOGL', name: 'Alphabet Inc.', catalyst: 'Sobreventa por temor antitrust', target: '+18.1%', status: 'Value Play', thesis: 'Valuación castigada injustamente respecto a sus pares de Big Tech manteniendo márgenes del 30%.' },
-    { ticker: 'AL30', name: 'Bono Soberano ARS', catalyst: 'Acumulación de reservas BCRA', target: '+31.0%', status: 'Riesgo Alto', thesis: 'Paridad atractiva con flujo de cupones garantizado en el mediano plazo si se consolida el superávit.' }
+    { ticker: 'PAMP', name: 'Pampa Energía', catalyst: 'Balance + Tarifas', target: '+22.4% Suba Proyectada', status: 'Alta Convicción', thesis: 'Fuerte generación de caja en dólares por exportación de gas y capacidad de transporte habilitada.' },
+    { ticker: 'GOOGL', name: 'Alphabet Inc.', catalyst: 'Sobreventa / Ratio Atractivo', target: '+18.1% Suba Proyectada', status: 'Value Play', thesis: 'Valuación castigada injustamente respecto a sus pares de Big Tech manteniendo márgenes del 30%.' },
+    { ticker: 'AL30', name: 'Bono Soberano ARS', catalyst: 'Acumulación de reservas BCRA', target: '+31.0% Suba Proyectada', status: 'Riesgo Alto', thesis: 'Paridad atractiva con flujo de cupones garantizado en el mediano plazo si se consolida el superávit.' }
   ];
 
   const openModal = (ticker = '', amount = '', type = 'CEDEAR') => {
@@ -110,7 +110,7 @@ export default function Home() {
                 <p className="text-slate-200 font-semibold">{selectedThesis.catalyst}</p>
               </div>
               <div>
-                <span className="text-slate-400 block font-medium">Rendimiento Objetivo Proyectado:</span>
+                <span className="text-slate-400 block font-medium">Potencial Estimado por Algoritmo (Upside):</span>
                 <p className="text-emerald-400 font-mono font-bold text-sm">{selectedThesis.target}</p>
               </div>
               <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
@@ -123,7 +123,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modal Edición de Posición */}
+      {/* Modal Edición Posición */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-[#0F1626] border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
@@ -207,7 +207,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Header Estilo Terminal */}
+      {/* Header */}
       <header className="border-b border-slate-800/80 bg-[#070A11]/90 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-3.5 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-sky-500/20">
@@ -215,7 +215,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="font-bold text-base text-slate-100 tracking-tight flex items-center gap-2">
-              Análisis Financiero <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">PWA V2.4</span>
+              Análisis Financiero <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">PWA V2.5</span>
             </h1>
             <p className="text-[11px] text-slate-400">Terminal de Inversiones • Merval & Wall Street</p>
           </div>
@@ -236,7 +236,7 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 space-y-8">
         
-        {/* RESUMEN DE ESTADO DE CUENTA Y EVALUADOR DE RIESGO DEL SISTEMA */}
+        {/* RESUMEN DE ESTADO DE CUENTA */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-[#0F1626] border border-slate-800 rounded-xl p-5 space-y-2">
             <span className="text-slate-400 text-xs font-medium">Patrimonio Total Monitoreado</span>
@@ -244,7 +244,7 @@ export default function Home() {
               ARS {totalPortfolio.toLocaleString('es-AR')}
             </div>
             <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-              <i className="fa-solid fa-arrow-trend-up"></i> Cartera diversificada en 9 activos
+              <i className="fa-solid fa-arrow-trend-up"></i> Cartera diversificada en {portfolio.length} activos
             </div>
           </div>
 
@@ -272,10 +272,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* TABLA DE PORTFOLIO + PANEL DE NOTICIAS */}
+        {/* TABLA PORTFOLIO + PANEL NOTICIAS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Columna Izquierda: Tabla Portfolio */}
+          {/* Tabla Portfolio */}
           <section className="lg:col-span-7 space-y-6">
             <div className="bg-[#0F1626] border border-slate-800 rounded-xl p-5 sm:p-6 shadow-xl">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
@@ -338,7 +338,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* SECCIÓN DE OPORTUNIDADES Y RADAR DE MERCADO */}
+            {/* RADAR DE OPORTUNIDADES */}
             <div className="bg-[#0F1626] border border-slate-800 rounded-xl p-5 sm:p-6 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                 <div>
@@ -354,14 +354,16 @@ export default function Home() {
                     <div>
                       <div className="flex justify-between items-start">
                         <span className="font-bold text-slate-100 text-sm">{opp.ticker}</span>
-                        <span className="text-emerald-400 font-mono font-bold text-xs">{opp.target}</span>
                       </div>
                       <p className="text-[11px] text-slate-400 line-clamp-1">{opp.name}</p>
-                      <p className="text-[10px] text-slate-300 mt-2 font-medium">{opp.catalyst}</p>
+                      <div className="mt-2">
+                        <span className="text-[10px] text-slate-400 block font-medium">Potencial Estimado:</span>
+                        <span className="text-emerald-400 font-mono font-bold text-xs block">{opp.target}</span>
+                      </div>
                     </div>
                     <button
                       onClick={() => setSelectedThesis(opp)}
-                      className="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-sky-400 text-[10px] py-1.5 rounded font-semibold border border-slate-700 transition"
+                      className="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-sky-400 text-[10px] py-1.5 rounded font-semibold border border-slate-700 transition"
                     >
                       Ver Tesis Completa
                     </button>
@@ -371,11 +373,11 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Columna Derecha: Panel Noticias */}
+          {/* Panel Noticias */}
           <section className="lg:col-span-5 space-y-6">
             <div className="bg-[#0F1626] border border-slate-800 rounded-xl p-5 sm:p-6 shadow-xl">
               <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
-                <div className="flex items-center space-x-4 text-xs">
+                <div className="flex items-center space-x-3 text-xs">
                   <button
                     onClick={() => setActiveTab('mine')}
                     className={`pb-1.5 flex items-center gap-1.5 transition ${activeTab === 'mine' ? 'border-b-2 border-sky-400 text-sky-400 font-bold' : 'text-slate-500 hover:text-slate-300'}`}
@@ -398,7 +400,7 @@ export default function Home() {
 
               <div className="space-y-3.5 max-h-[720px] overflow-y-auto pr-1">
                 {news
-                  .filter((n) => (activeTab === 'mine' ? n.type === 'MINE' : true))
+                  .filter((n) => (activeTab === 'mine' ? n.type === 'MINE' : n.type === 'EXPLORE'))
                   .map((item) => (
                     <div key={item.id} className="p-4 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2.5">
                       <div className="flex justify-between items-center text-[11px]">
