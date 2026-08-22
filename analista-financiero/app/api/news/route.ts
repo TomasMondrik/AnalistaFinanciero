@@ -1,43 +1,42 @@
 import { NextResponse } from 'next/server';
+import Parser from 'rss-parser';
+
+const parser = new Parser();
+
+// Fuentes RSS financieras de Argentina y EE.UU.
+const FEEDS = [
+  { name: 'El Cronista', url: 'https://www.cronista.com/files/rss/news.xml', region: 'AR' },
+  { name: 'Ámbito', url: 'https://www.ambito.com/rss/home.xml', region: 'AR' }
+];
 
 export async function GET() {
-  const news = [
-    {
-      id: '1',
-      source: 'Reuters • EE.UU.',
-      time: '11:48 AM',
-      elapsed: 'hace 18 min',
-      title: 'La Reserva Federal sugiere mantener la tasa de interés en el corto plazo',
-      impactTitle: 'Por qué afecta a tu portfolio:',
-      impactDescription: 'Impacta en la cotización de tus CEDEARs tecnológicos (AAPL, GOOGL, NVDA) por ajuste de tasa de descuento.',
-      type: 'MINE',
-      weight: 8
-    },
-    {
-      id: '2',
-      source: 'El Cronista • Argentina',
-      time: '10:15 AM',
-      elapsed: 'hace 1h 51m',
-      title: 'Nuevos récords de transporte de crudo en Vaca Muerta',
-      impactTitle: 'Por qué afecta a tu portfolio:',
-      impactDescription: 'Noticia favorable para YPFD y PAMP. Fortalece la proyección de generación de caja.',
-      type: 'MINE',
-      weight: 7
-    },
-    {
-      id: '3',
-      source: 'Bloomberg • Internacional',
-      time: '06:15 AM',
-      elapsed: 'hace 5h 51m',
-      title: 'Conflicto en Medio Oriente presiona el precio internacional del petróleo WTI (+4.8%)',
-      impactTitle: 'Análisis Energéticas:',
-      impactDescription: 'Noticia de la madrugada con máximo impacto macro. Dispara valuaciones en empresas productoras de crudo.',
-      isCritical: true,
-      type: 'EXPLORE',
-      weight: 10
-    }
-  ];
+  try {
+    const allArticles: any[] = [];
 
-  const sortedNews = news.sort((a, b) => b.weight - a.weight);
-  return NextResponse.json(sortedNews);
+    for (const feed of FEEDS) {
+      try {
+        const parsed = await parser.parseURL(feed.url);
+        parsed.items.slice(0, 5).forEach((item) => {
+          allArticles.push({
+            id: item.guid || item.link || Math.random().toString(),
+            source: `${feed.name} • ${feed.region}`,
+            time: item.pubDate ? new Date(item.pubDate).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Reciente',
+            elapsed: 'En vivo',
+            title: item.title || '',
+            impactTitle: 'Impacto Automático:',
+            impactDescription: item.contentSnippet ? item.contentSnippet.slice(0, 120) + '...' : 'Análisis macro / sectorial en seguimiento.',
+            type: feed.region === 'AR' ? 'MINE' : 'EXPLORE',
+            weight: 8,
+            isCritical: item.title?.toLowerCase().includes('ypf') || item.title?.toLowerCase().includes('fed')
+          });
+        });
+      } catch (err) {
+        console.error(`Error leyendo feed ${feed.name}:`, err);
+      }
+    }
+
+    return NextResponse.json(allArticles);
+  } catch (error) {
+    return NextResponse.json({ error: 'Error procesando noticias' }, { status: 500 });
+  }
 }

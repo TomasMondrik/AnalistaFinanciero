@@ -9,18 +9,49 @@ export default function Home() {
   const [formTicker, setFormTicker] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formType, setFormType] = useState('CEDEAR');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
 
+  // Pedir permiso para notificaciones PWA del navegador
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        setNotificationsEnabled(true);
+        new Notification('Análisis Financiero PWA', {
+          body: '¡Notificaciones nativas activadas con éxito!',
+          icon: '/icon-192.png',
+        });
+      }
+    }
+  };
+
   useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+
     fetch('/api/portfolio')
       .then((res) => res.json())
       .then((data) => setPortfolio(data));
 
     fetch('/api/news')
       .then((res) => res.json())
-      .then((data) => setNews(data));
+      .then((data) => {
+        setNews(data);
+        
+        // Si hay una noticia crítica y tenemos permisos, enviamos la alerta PWA
+        if (Notification.permission === 'granted') {
+          const criticalItem = data.find((n: any) => n.isCritical);
+          if (criticalItem) {
+            new Notification(`🚨 Alerta: ${criticalItem.source}`, {
+              body: criticalItem.title,
+            });
+          }
+        }
+      });
   }, []);
 
   const totalPortfolio = portfolio.reduce((acc, item) => acc + Number(item.amount), 0);
@@ -66,6 +97,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-16 antialiased relative">
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-[#111726] border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
@@ -149,6 +181,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* Header */}
       <header className="border-b border-slate-800/80 bg-[#090D16]/90 sticky top-0 z-40 backdrop-blur-md px-6 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-100 text-lg">
@@ -159,6 +192,19 @@ export default function Home() {
             <p className="text-xs text-slate-400">Mercado Argentina & EE.UU.</p>
           </div>
         </div>
+
+        {/* Botón de Notificaciones PWA */}
+        <button
+          onClick={requestNotificationPermission}
+          className={`text-xs px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-2 transition ${
+            notificationsEnabled
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+              : 'bg-sky-500/10 text-sky-400 border-sky-500/30 hover:bg-sky-500/20'
+          }`}
+        >
+          <i className={`fa-solid ${notificationsEnabled ? 'fa-bell' : 'fa-bell-slash'}`}></i>
+          {notificationsEnabled ? 'Alertas PWA Activas' : 'Activar Alertas PWA'}
+        </button>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
