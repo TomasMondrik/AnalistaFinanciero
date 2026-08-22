@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Financiero</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #090D16; color: #F1F5F9; }
+        .card { background: #111726; border: 1px solid #1E293B; }
+        .tab-active { border-bottom: 2px solid #38BDF8; color: #38BDF8; font-weight: 600; }
+        .tab-inactive { color: #64748B; font-weight: 500; }
+        .tab-inactive:hover { color: #94A3B8; }
+        
+        .badge-sugerencia-green { background: rgba(16, 185, 129, 0.12); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .badge-sugerencia-amber { background: rgba(245, 158, 11, 0.12); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.25); }
+        .badge-sugerencia-red { background: rgba(244, 63, 94, 0.12); color: #FB7185; border: 1px solid rgba(244, 63, 94, 0.25); }
+
+        .fade-in { animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen pb-16 antialiased relative">
+
+    <!-- Modal para Editar / Gestionar Portfolio -->
+    <div id="modal-portfolio" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden fade-in px-4">
+        <div class="card rounded-2xl w-full max-w-lg p-6 space-y-5 border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-slate-100" id="modal-title">Editar Posición</h3>
+                    <p class="text-xs text-slate-400">Actualizá los montos o vendé/comprá activos de tu cuenta</p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="form-portfolio" class="space-y-4 text-xs" onsubmit="handleSaveAsset(event)">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Ticker / Activo</label>
+                    <input type="text" id="input-ticker" placeholder="Ej: YPFD, NVDA, AL30" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500 font-mono uppercase" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-medium mb-1">Tipo de Activo</label>
+                        <select id="input-tipo" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+                            <option value="CEDEAR">CEDEAR</option>
+                            <option value="Acción AR">Acción AR (Merval)</option>
+                            <option value="Renta Fija">Renta Fija / Bono</option>
+                            <option value="ETF">ETF</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-medium mb-1">Monto Invertido (ARS)</label>
+                        <input type="number" id="input-monto" placeholder="Ej: 40750" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500 font-mono" required>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-between items-center gap-3 border-t border-slate-800">
+                    <button type="button" onclick="handleDeleteAsset()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-2 rounded-lg font-semibold transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Eliminar / Vendí Todo
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-medium transition">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-slate-950 px-4 py-2 rounded-lg font-bold transition">
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header Minimalista -->
+    <header class="border-b border-slate-800/80 bg-[#090D16]/90 sticky top-0 z-40 backdrop-blur-md px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-100 text-lg">
+                AF
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-slate-100 tracking-tight">Análisis Financiero</h1>
+                <p class="text-xs text-slate-400">Mercado Argentina & EE.UU.</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Actualizado hace 2 min</span>
+            </div>
+            <button class="bg-slate-100 hover:bg-white text-slate-950 text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-sm">
+                Configurar Alertas
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Columna Izquierda: Portfolio & Oportunidades (7 Columnas) -->
+        <section class="lg:col-span-7 space-y-6">
+
+            <!-- Diagnóstico de Riesgo General -->
+            <div class="card rounded-xl p-5 border-l-4 border-l-amber-500">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-semibold text-amber-400 tracking-wider uppercase">Evaluación del Sistema</span>
+                    <span class="text-xs text-slate-500">Riesgo General</span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-200 mt-2">Elevada concentración en tecnología e innovación especulativa</h3>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Gran porcentaje asignado a Big Tech (AAPL, AMZN, GOOGL, NVDA, SPY) y RGTI. Considerar incorporar instrumentos de renta fija para equilibrar la exposición a volatilidad de tasas en EE.UU.
+                </p>
+            </div>
+
+            <!-- Tabla de Portfolio con Pesos (ARS) y Botón de Editar / Agregar -->
+            <div class="card rounded-xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-100">Tu Portfolio</h2>
+                        <p class="text-xs text-slate-400">Posiciones actuales y monitoreo continuo</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400 bg-slate-800/60 border border-slate-700/50 px-2.5 py-1.5 rounded-md font-mono">
+                            Total: ARS 251.311,00
+                        </span>
+                        <button onclick="openModal('NUEVO')" class="bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-xs font-semibold px-3 py-1.5 rounded-md transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Cargar / Modificar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
+                            <tr>
+                                <th class="pb-3">Activo</th>
+                                <th class="pb-3 text-right">Monto (ARS)</th>
+                                <th class="pb-3 text-right">Rend.</th>
+                                <th class="pb-3 text-center">Sugerencia IA</th>
+                                <th class="pb-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50 font-medium text-slate-300">
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    YPFD <span class="text-[10px] text-slate-500 font-normal">Acción AR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 40.750,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+48.66%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-amber text-[10px] px-2 py-0.5 rounded-md">Proteger Ganancia</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('YPFD', 40750, 'Acción AR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    PAMP <span class="text-[10px] text-slate-500 font-normal">Acción AR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 40.440,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+4.90%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-green text-[10px] px-2 py-0.5 rounded-md">Mantener</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('PAMP', 40440, 'Acción AR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    AAPL <span class="text-[10px] text-slate-500 font-normal">CEDEAR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 49.360,00</td>
+                                <td class="text-right text-rose-400 font-semibold">-2.28%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-green text-[10px] px-2 py-0.5 rounded-md">Mantener</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('AAPL', 49360, 'CEDEAR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    SPY <span class="text-[10px] text-slate-500 font-normal">ETF CEDEAR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 40.720,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+0.01%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-green text-[10px] px-2 py-0.5 rounded-md">Mantener</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('SPY', 40720, 'ETF')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    GOOGL <span class="text-[10px] text-slate-500 font-normal">CEDEAR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 28.470,00</td>
+                                <td class="text-right text-rose-400 font-semibold">-2.41%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-amber text-[10px] px-2 py-0.5 rounded-md">Monitorear</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('GOOGL', 28470, 'CEDEAR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    AMZN <span class="text-[10px] text-slate-500 font-normal">CEDEAR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 22.960,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+4.79%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-green text-[10px] px-2 py-0.5 rounded-md">Mantener</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('AMZN', 22960, 'CEDEAR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    NVDA <span class="text-[10px] text-slate-500 font-normal">CEDEAR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 14.280,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+2.30%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-green text-[10px] px-2 py-0.5 rounded-md">Mantener</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('NVDA', 14280, 'CEDEAR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition bg-rose-500/5">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    RGTI <span class="text-[10px] text-slate-500 font-normal">CEDEAR Quantum</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 14.280,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+8.41%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-red text-[10px] px-2 py-0.5 rounded-md">Vender / Reducir</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('RGTI', 14280, 'CEDEAR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition">
+                                <td class="py-3 font-semibold text-slate-100">
+                                    TXAR <span class="text-[10px] text-slate-500 font-normal">Acción AR</span>
+                                </td>
+                                <td class="text-right font-mono font-semibold text-slate-200">ARS 2.091,00</td>
+                                <td class="text-right text-emerald-400 font-semibold">+2.53%</td>
+                                <td class="text-center">
+                                    <span class="badge-sugerencia-amber text-[10px] px-2 py-0.5 rounded-md">Neutral</span>
+                                </td>
+                                <td class="text-right">
+                                    <button onclick="openModal('TXAR', 2091, 'Acción AR')" class="text-slate-400 hover:text-sky-400 p-1 transition" title="Editar o ajustar monto">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Posibles Oportunidades -->
+            <div class="card rounded-xl p-6">
+                <h2 class="text-base font-semibold text-slate-100 mb-1">Oportunidades Destacadas</h2>
+                <p class="text-xs text-slate-400 mb-4">Activos fuera de tu cartera con catalizadores o caídas puntuales</p>
+
+                <div class="space-y-3">
+                    <div class="p-3.5 rounded-lg bg-slate-900/60 border border-slate-800 flex justify-between items-center text-xs">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-100">AL30D</span>
+                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Renta Fija AR</span>
+                            </div>
+                            <p class="text-slate-400 text-[11px] mt-0.5">TIR elevada en USD. Oportunidad por compresión de riesgo país.</p>
+                        </div>
+                        <button class="text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-1.5 rounded-md transition text-[11px]">
+                            Ver Tesis
+                        </button>
+                    </div>
+
+                    <div class="p-3.5 rounded-lg bg-slate-900/60 border border-slate-800 flex justify-between items-center text-xs">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-100">MELI (Mercado Libre)</span>
+                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">CEDEAR</span>
+                            </div>
+                            <p class="text-slate-400 text-[11px] mt-0.5">Retroceso del 3.5% por toma de ganancias. Crecimiento Fintech sólido.</p>
+                        </div>
+                        <button class="text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-1.5 rounded-md transition text-[11px]">
+                            Ver Tesis
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Columna Derecha: Feed de Noticias (5 Columnas) -->
+        <section class="lg:col-span-5 space-y-6">
+
+            <div class="card rounded-xl p-6">
+                
+                <!-- Toggle de Pestañas: Mis Empresas vs Noticias -->
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                    <div class="flex items-center space-x-4 text-xs">
+                        <button id="btn-tab-mine" onclick="switchTab('mine')" class="tab-active pb-1 flex items-center gap-1.5">
+                            <span>Tus Empresas</span>
+                            <span class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded-full">8</span>
+                        </button>
+                        <button id="btn-tab-explore" onclick="switchTab('explore')" class="tab-inactive pb-1 flex items-center gap-1.5">
+                            <span>Noticias</span>
+                            <i class="fa-solid fa-arrow-right-long text-[10px]"></i>
+                        </button>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono">24/7 EN VIVO</span>
+                </div>
+
+                <!-- Feed Content: Tus Empresas -->
+                <div id="feed-mine" class="space-y-3.5 max-h-[680px] overflow-y-auto pr-1 fade-in">
+                    
+                    <!-- Noticia 1 -->
+                    <div class="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-slate-400 font-medium">Reuters • EE.UU.</span>
+                            <span class="text-slate-400 font-mono text-[10px] bg-slate-800 px-2 py-0.5 rounded">11:48 AM • hace 18 min</span>
+                        </div>
+                        <h4 class="text-xs font-semibold text-slate-100">La Reserva Federal sugiere mantener la tasa de interés en el corto plazo</h4>
+                        <div class="bg-slate-950/60 p-2.5 rounded border border-slate-800/80 text-[11px] space-y-1">
+                            <span class="text-amber-400 font-medium text-[10px] uppercase block">Por qué afecta a tu portfolio:</span>
+                            <p class="text-slate-300 leading-relaxed">
+                                Impacta en la cotización de tus CEDEARs tecnológicos (AAPL, GOOGL, NVDA) por ajuste de tasa de descuento.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Noticia 2 -->
+                    <div class="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-slate-400 font-medium">El Cronista • Argentina</span>
+                            <span class="text-slate-400 font-mono text-[10px] bg-slate-800 px-2 py-0.5 rounded">10:15 AM • hace 1h 51m</span>
+                        </div>
+                        <h4 class="text-xs font-semibold text-slate-100">Nuevos récords de transporte de crudo en Vaca Muerta</h4>
+                        <div class="bg-slate-950/60 p-2.5 rounded border border-slate-800/80 text-[11px] space-y-1">
+                            <span class="text-emerald-400 font-medium text-[10px] uppercase block">Por qué afecta a tu portfolio:</span>
+                            <p class="text-slate-300 leading-relaxed">
+                                Noticia favorable para <strong>YPFD</strong> y <strong>PAMP</strong>. Fortalece la proyección de generación de caja.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Noticia 3 -->
+                    <div class="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-slate-400 font-medium">SEC Filing • EE.UU.</span>
+                            <span class="text-slate-400 font-mono text-[10px] bg-slate-800 px-2 py-0.5 rounded">09:30 AM • hace 2h 36m</span>
+                        </div>
+                        <h4 class="text-xs font-semibold text-slate-100">Rigetti Computing emite reporte operativo de desarrollo cuántico</h4>
+                        <div class="bg-slate-950/60 p-2.5 rounded border border-slate-800/80 text-[11px] space-y-1">
+                            <span class="text-rose-400 font-medium text-[10px] uppercase block">Por qué afecta a tu portfolio:</span>
+                            <p class="text-slate-300 leading-relaxed">
+                                Muestra consumo alto de capital. Alta volatilidad esperada en <strong>RGTI</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Feed Content: Noticias Generales -->
+                <div id="feed-explore" class="space-y-3.5 max-h-[680px] overflow-y-auto pr-1 hidden fade-in">
+                    
+                    <div class="p-3.5 rounded-lg bg-slate-900/80 border-2 border-amber-500/40 space-y-2 relative">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <div class="flex items-center gap-1.5">
+                                <span class="bg-amber-500/20 text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
+                                    IMPACTO CRÍTICO IA
+                                </span>
+                                <span class="text-slate-400 font-medium">Bloomberg • Internacional</span>
+                            </div>
+                            <span class="text-slate-400 font-mono text-[10px] bg-slate-800 px-2 py-0.5 rounded">06:15 AM • hace 5h 51m</span>
+                        </div>
+                        <h4 class="text-xs font-semibold text-slate-100">Conflicto en Medio Oriente presiona el precio internacional del petróleo WTI (+4.8%)</h4>
+                        <div class="bg-slate-950/60 p-2.5 rounded border border-slate-800/80 text-[11px] space-y-1">
+                            <span class="text-amber-400 font-medium text-[10px] uppercase block">Análisis Energéticas:</span>
+                            <p class="text-slate-300 leading-relaxed">
+                                Noticia de la madrugada con máximo impacto macro. Dispara valuaciones en empresas productoras de crudo.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-slate-400 font-medium">Reuters • EE.UU.</span>
+                            <span class="text-slate-400 font-mono text-[10px] bg-slate-800 px-2 py-0.5 rounded">11:10 AM • hace 56 min</span>
+                        </div>
+                        <h4 class="text-xs font-semibold text-slate-100">Tesla baja precios de suscripción de software de conducción autónoma</h4>
+                        <div class="bg-slate-950/60 p-2.5 rounded border border-slate-800/80 text-[11px] space-y-1">
+                            <span class="text-slate-400 font-medium text-[10px] uppercase block">Análisis TSLA:</span>
+                            <p class="text-slate-300 leading-relaxed">
+                                Busca aumentar adopción masiva. Podría afectar márgenes en el corto plazo, pero escala suscripciones.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        function switchTab(tab) {
+            const mineFeed = document.getElementById('feed-mine');
+            const exploreFeed = document.getElementById('feed-explore');
+            const btnMine = document.getElementById('btn-tab-mine');
+            const btnExplore = document.getElementById('btn-tab-explore');
+
+            if (tab === 'mine') {
+                mineFeed.classList.remove('hidden');
+                exploreFeed.classList.add('hidden');
+                btnMine.className = 'tab-active pb-1 flex items-center gap-1.5';
+                btnExplore.className = 'tab-inactive pb-1 flex items-center gap-1.5';
+            } else {
+                mineFeed.classList.add('hidden');
+                exploreFeed.classList.remove('hidden');
+                btnExplore.className = 'tab-active pb-1 flex items-center gap-1.5';
+                btnMine.className = 'tab-inactive pb-1 flex items-center gap-1.5';
+            }
+        }
+
+        function openModal(ticker = '', monto = '', tipo = 'CEDEAR') {
+            const modal = document.getElementById('modal-portfolio');
+            const title = document.getElementById('modal-title');
+            const inputTicker = document.getElementById('input-ticker');
+            const inputMonto = document.getElementById('input-monto');
+            const inputTipo = document.getElementById('input-tipo');
+
+            if (ticker === 'NUEVO') {
+                title.innerText = 'Cargar Nuevo Activo / Comprar';
+                inputTicker.value = '';
+                inputMonto.value = '';
+                inputTicker.removeAttribute('readonly');
+            } else {
+                title.innerText = 'Editar Posición: ' + ticker;
+                inputTicker.value = ticker;
+                inputMonto.value = monto;
+                inputTipo.value = tipo;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-portfolio').classList.add('hidden');
+        }
+
+        function handleSaveAsset(e) {
+            e.preventDefault();
+            const ticker = document.getElementById('input-ticker').value;
+            const monto = document.getElementById('input-monto').value;
+            alert('¡Guardado! Se actualizó la posición de ' + ticker + ' con ARS ' + monto);
+            closeModal();
+        }
+
+        function handleDeleteAsset() {
+            const ticker = document.getElementById('input-ticker').value;
+            if (confirm('¿Seguro que vendiste todo ' + ticker + '? Se eliminará de tu portfolio activo.')) {
+                alert('Posición de ' + ticker + ' eliminada.');
+                closeModal();
+            }
+        }
+    </script>
+
+</body>
+</html>
