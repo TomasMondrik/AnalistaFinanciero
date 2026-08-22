@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export async function GET() {
   const now = new Date();
@@ -7,95 +10,81 @@ export async function GET() {
     return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
-  const newsData = [
-    // --- PESTAÑA: TUS EMPRESAS (type: 'MINE') ---
+  // Titulares recientes para analizar por IA
+  const rawArticles = [
     {
-      id: 'mine-1',
+      id: '1',
       source: 'El Cronista • Argentina',
       time: formatTime(10),
-      elapsed: 'hace 10 min',
-      title: 'YPF acelera obras del oleoducto Vaca Muerta Sur para incrementar exportaciones',
-      impactTitle: 'Impacto directo en YPFD / PAMP:',
-      impactDescription: 'Garantiza mayor capacidad de transporte de crudo y consolida el flujo de caja operativo en dólares.',
-      type: 'MINE',
-      weight: 10,
-      ticker: 'YPFD'
+      title: 'YPF acelera las obras de infraestructura en Vaca Muerta para elevar exportaciones de crudo',
+      ticker: 'YPFD',
+      type: 'MINE'
     },
     {
-      id: 'mine-2',
-      source: 'Wall Street Journal • EE.UU.',
+      id: '2',
+      source: 'Bloomberg • Wall Street',
       time: formatTime(25),
-      elapsed: 'hace 25 min',
-      title: 'NVIDIA recibe nueva demanda masiva de procesadores Blackwell para centros de datos',
-      impactTitle: 'Impacto directo en NVDA:',
-      impactDescription: 'Sostiene proyecciones de crecimiento en ingresos para el trimestre y reafirma su liderazgo tecnológico.',
-      type: 'MINE',
-      weight: 9,
-      ticker: 'NVDA'
+      title: 'NVIDIA reporta una sólida demanda de chips Blackwell para centros de datos de IA',
+      ticker: 'NVDA',
+      type: 'MINE'
     },
     {
-      id: 'mine-3',
-      source: 'Bloomberg • Mercados',
-      time: formatTime(40),
-      elapsed: 'hace 40 min',
-      title: 'Pampa Energía confirma avance en la producción de gas para contratos de exportación',
-      impactTitle: 'Impacto directo en PAMP:',
-      impactDescription: 'Aumento de capacidad entregada en el Plan Gas con tarifas en dólares aseguradas.',
-      type: 'MINE',
-      weight: 8,
-      ticker: 'PAMP'
-    },
-    {
-      id: 'mine-4',
-      source: 'Reuters • Tech',
-      time: formatTime(60),
-      elapsed: 'hace 1 hora',
-      title: 'Apple negocia la integración de nuevas soluciones de IA para su próxima actualización de iOS',
-      impactTitle: 'Impacto directo en AAPL:',
-      impactDescription: 'Potencial catalizador para el recambio global de iPhones durante el próximo semestre.',
-      type: 'MINE',
-      weight: 8,
-      ticker: 'AAPL'
-    },
-
-    // --- PESTAÑA: MERCADO GENERAL (type: 'EXPLORE') ---
-    {
-      id: 'exp-1',
+      id: '3',
       source: 'Ámbito Financiero • Macro Local',
       time: formatTime(15),
-      elapsed: 'hace 15 min',
-      title: 'El Contado con Liqui (CCL) opera con leve baja mientras el BCRA suma dólares',
-      impactTitle: 'Análisis Tipo de Cambio & CEDEARs:',
-      impactDescription: 'La calma cambiaria ajusta temporalmente la cotización en pesos de activos extranjeros como el SPY.',
-      type: 'EXPLORE',
-      weight: 7,
-      ticker: 'CCL'
-    },
-    {
-      id: 'exp-2',
-      source: 'CNBC • Macro EE.UU.',
-      time: formatTime(35),
-      elapsed: 'hace 35 min',
-      title: 'La Reserva Federal evalúa la evolución de la inflación antes del próximo movimiento de tasas',
-      impactTitle: 'Análisis Tasa Internacional:',
-      impactDescription: 'Expectativa de tasas impacta directamente en las valuaciones descontadas de Big Tech en Wall Street.',
-      type: 'EXPLORE',
-      weight: 7,
-      ticker: 'FED'
-    },
-    {
-      id: 'exp-3',
-      source: 'MarketWatch • Commodities',
-      time: formatTime(80),
-      elapsed: 'hace 1h 20m',
-      title: 'El barril de Petróleo WTI sostiene el valor por encima de USD 75 impulso por oferta',
-      impactTitle: 'Análisis Sector Energía:',
-      impactDescription: 'El precio del crudo internacional favorece los balances de las petroleras integradas locales e internacionales.',
-      type: 'EXPLORE',
-      weight: 6,
-      ticker: 'WTI'
+      title: 'El dólar Contado con Liqui (CCL) opera con leve baja por acumulación de reservas del BCRA',
+      ticker: 'CCL',
+      type: 'EXPLORE'
     }
   ];
 
-  return NextResponse.json(newsData);
+  try {
+    // Si hay clave de Gemini, procesamos con IA Real
+    if (process.env.GEMINI_API_KEY) {
+      const prompt = `
+        Sos un analista financiero experto en el mercado argentino (Merval, CEDEARs, Bonos).
+        Analizá estos titulares y devolvé UNICAMENTE un JSON válido con esta estructura exacta para cada uno:
+        [
+          {
+            "id": "id del articulo",
+            "impactTitle": "Título corto de impacto (ej: Impacto directo en YPFD:)",
+            "impactDescription": "Análisis cuantitativo de 1 o 2 oraciones sobre el efecto en la cotización.",
+            "upside": "Ej: +25% Suba Proyectada o Impacto Neutro",
+            "action": "Mantener, Proteger Ganancia o Vender"
+          }
+        ]
+
+        Titulares a analizar:
+        ${JSON.stringify(rawArticles)}
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: { responseMimeType: 'application/json' }
+      });
+
+      const aiAnalysis = JSON.parse(response.text || '[]');
+
+      // Combinar datos del titular con la respuesta de la IA
+      const enrichedNews = rawArticles.map((article) => {
+        const analysis = aiAnalysis.find((a: any) => a.id === article.id) || {};
+        return {
+          ...article,
+          elapsed: 'en vivo (IA)',
+          impactTitle: analysis.impactTitle || 'Impacto Estimado:',
+          impactDescription: analysis.impactDescription || 'Análisis en proceso por el motor financiero.',
+          upside: analysis.upside || 'En revisión',
+          action: analysis.action || 'Mantener'
+        };
+      });
+
+      return NextResponse.json(enrichedNews);
+    }
+  } catch (error) {
+    console.error('Error procesando con Gemini:', error);
+  }
+
+  // Fallback si no hay clave configurada
+  return NextResponse.json(rawArticles);
 }
