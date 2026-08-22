@@ -1,21 +1,28 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Fuerza a Next.js a ejecutar la ruta únicamente en tiempo de ejecución (no en el build)
+export const dynamic = 'force-dynamic';
+
+function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 export async function GET() {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('portfolio')
     .select('*')
     .order('created_at', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  return NextResponse.json(data || []);
 }
 
 export async function POST(req: Request) {
+  const supabase = getSupabase();
   const body = await req.json();
   const { ticker, amount, type } = body;
 
@@ -44,10 +51,11 @@ export async function POST(req: Request) {
   }
 
   const { data: updated } = await supabase.from('portfolio').select('*');
-  return NextResponse.json(updated);
+  return NextResponse.json(updated || []);
 }
 
 export async function DELETE(req: Request) {
+  const supabase = getSupabase();
   const { searchParams } = new URL(req.url);
   const ticker = searchParams.get('ticker');
 
@@ -56,5 +64,5 @@ export async function DELETE(req: Request) {
   }
 
   const { data: updated } = await supabase.from('portfolio').select('*');
-  return NextResponse.json(updated);
+  return NextResponse.json(updated || []);
 }
