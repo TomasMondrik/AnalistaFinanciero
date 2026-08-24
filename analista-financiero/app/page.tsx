@@ -39,37 +39,49 @@ export default function Home() {
       setNotificationsEnabled(Notification.permission === 'granted');
     }
 
-    // 1. Obtener Portfolio desde Supabase
-    fetch('/api/portfolio')
-      .then((res) => res.json())
-      .then((data) => {
-        setPortfolio(data);
+    const fetchData = () => {
+      // 1. Obtener Portfolio desde Supabase
+      fetch('/api/portfolio')
+        .then((res) => res.json())
+        .then((data) => {
+          setPortfolio(data);
 
-        // 2. Pasar el portfolio a Gemini para evaluador de riesgo en vivo
-        if (Array.isArray(data) && data.length > 0) {
-          fetch('/api/ai-evaluator', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ portfolio: data }),
-          })
-            .then((res) => res.json())
-            .then((evalData) => {
-              setAiEvaluator(evalData);
-              setLoadingAi(false);
+          // 2. Evaluador de riesgo por Gemini en vivo
+          if (Array.isArray(data) && data.length > 0) {
+            fetch('/api/ai-evaluator', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ portfolio: data }),
             })
-            .catch(() => setLoadingAi(false));
-        }
-      });
+              .then((res) => res.json())
+              .then((evalData) => {
+                setAiEvaluator(evalData);
+                setLoadingAi(false);
+              })
+              .catch(() => setLoadingAi(false));
+          }
+        });
 
-    // 3. Obtener Noticias Analizadas por Gemini
-    fetch('/api/news')
-      .then((res) => res.json())
-      .then((data) => setNews(data));
+      // 3. Noticias en vivo analizadas por Gemini
+      fetch('/api/news')
+        .then((res) => res.json())
+        .then((data) => setNews(data));
 
-    // 4. Obtener Radar de Oportunidades Generado por Gemini
-    fetch('/api/opportunities')
-      .then((res) => res.json())
-      .then((data) => setOpportunities(data));
+      // 4. Oportunidades dinámicas por Gemini
+      fetch('/api/opportunities')
+        .then((res) => res.json())
+        .then((data) => setOpportunities(data));
+    };
+
+    // Carga inicial
+    fetchData();
+
+    // Actualización automática en segundo plano cada 30 segundos
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const totalPortfolio = portfolio.reduce((acc, item) => acc + Number(item.amount), 0);
@@ -115,7 +127,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-20 antialiased bg-[#070A11] text-slate-100">
-      {/* Modal Tesis Inversión (Analizada por Gemini) */}
+      {/* Modal Tesis Inversión */}
       {selectedThesis && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center px-4">
           <div className="bg-[#0F1626] border border-sky-500/30 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
@@ -240,7 +252,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Header Estilo Terminal PWA */}
+      {/* Header */}
       <header className="border-b border-slate-800/80 bg-[#070A11]/90 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-3.5 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center font-black text-slate-950 text-sm shadow-lg shadow-sky-500/20">
