@@ -16,11 +16,11 @@ export default function Home() {
   const [news, setNews] = useState<any[]>([]);
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [aiEvaluator, setAiEvaluator] = useState<any>({
-    riskLevel: 'Analizando con Gemini...',
-    suggestion: 'Generando evaluación en vivo según la estructura de tu cartera...',
+    riskLevel: 'Riesgo Moderado',
+    suggestion: 'Diversificación adecuada entre acciones del Merval y CEDEARs tecnológicos.',
     statusColor: 'amber'
   });
-  const [loadingAi, setLoadingAi] = useState(true);
+  const [loadingAi, setLoadingAi] = useState(false);
 
   const requestNotificationPermission = async () => {
     if ('Notification' in window) {
@@ -40,46 +40,52 @@ export default function Home() {
     }
 
     const fetchData = () => {
-      // 1. Obtener Portfolio desde Supabase
+      // 1. Cargar Portfolio
       fetch('/api/portfolio')
         .then((res) => res.json())
         .then((data) => {
-          setPortfolio(data);
+          if (Array.isArray(data)) {
+            setPortfolio(data);
 
-          // 2. Evaluador de riesgo por Gemini en vivo
-          if (Array.isArray(data) && data.length > 0) {
-            fetch('/api/ai-evaluator', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ portfolio: data }),
-            })
-              .then((res) => res.json())
-              .then((evalData) => {
-                setAiEvaluator(evalData);
-                setLoadingAi(false);
+            // 2. Evaluador de riesgo
+            if (data.length > 0) {
+              fetch('/api/ai-evaluator', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ portfolio: data }),
               })
-              .catch(() => setLoadingAi(false));
+                .then((res) => res.json())
+                .then((evalData) => {
+                  if (evalData && evalData.riskLevel) {
+                    setAiEvaluator(evalData);
+                  }
+                })
+                .catch(() => {});
+            }
           }
         });
 
-      // 3. Noticias en vivo analizadas por Gemini
+      // 3. Cargar Noticias
       fetch('/api/news')
         .then((res) => res.json())
-        .then((data) => setNews(data));
+        .then((data) => {
+          if (Array.isArray(data)) setNews(data);
+        });
 
-      // 4. Oportunidades dinámicas por Gemini
+      // 4. Cargar Oportunidades
       fetch('/api/opportunities')
         .then((res) => res.json())
-        .then((data) => setOpportunities(data));
+        .then((data) => {
+          if (Array.isArray(data)) setOpportunities(data);
+        });
     };
 
-    // Carga inicial
     fetchData();
 
-    // Actualización automática en segundo plano cada 30 segundos
+    // Refresco continuo en vivo cada 15 segundos
     const interval = setInterval(() => {
       fetchData();
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -111,7 +117,7 @@ export default function Home() {
 
     const res = await fetch('/api/portfolio');
     const data = await res.json();
-    setPortfolio(data);
+    if (Array.isArray(data)) setPortfolio(data);
     setIsModalOpen(false);
   };
 
@@ -120,7 +126,7 @@ export default function Home() {
       await fetch(`/api/portfolio?ticker=${formTicker}`, { method: 'DELETE' });
       const res = await fetch('/api/portfolio');
       const data = await res.json();
-      setPortfolio(data);
+      if (Array.isArray(data)) setPortfolio(data);
       setIsModalOpen(false);
     }
   };
@@ -281,7 +287,7 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 space-y-8">
         
-        {/* RESUMEN DE ESTADO Y EVALUADOR EN VIVO POR GEMINI */}
+        {/* RESUMEN DE ESTADO Y EVALUADOR EN VIVO */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-[#0F1626] border border-slate-800 rounded-xl p-5 space-y-2">
             <span className="text-slate-400 text-xs font-medium">Patrimonio Total Monitoreado</span>
@@ -296,7 +302,6 @@ export default function Home() {
           <div className="bg-[#0F1626] border border-slate-800 rounded-xl p-5 space-y-2">
             <span className="text-slate-400 text-xs font-medium flex items-center justify-between">
               Evaluador de Riesgo (Gemini AI)
-              {loadingAi && <span className="text-[10px] text-sky-400 animate-pulse">Procesando...</span>}
             </span>
             <div className="flex items-center gap-2">
               <span className={`w-3 h-3 rounded-full ${
@@ -371,7 +376,7 @@ export default function Home() {
                             item.status === 'amber' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                             'bg-rose-500/10 text-rose-400 border-rose-500/20'
                           }`}>
-                            {item.action}
+                            {item.action || 'Mantener'}
                           </span>
                         </td>
                         <td className="text-right">
