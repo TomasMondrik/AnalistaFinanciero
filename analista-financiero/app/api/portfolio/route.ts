@@ -18,7 +18,18 @@ export async function GET() {
       .order('created_at', { ascending: true });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data || []);
+
+    // Cotizaciones/Rendimientos en vivo sim/calculados para actualizar dinámicamente
+    const updatedData = (data || []).map((item) => {
+      // Si querés que varíe levemente el rendimiento simulando mercado abierto
+      const randomYield = (Math.random() * (item.yield || 2) - 0.5).toFixed(2);
+      return {
+        ...item,
+        yield: item.yield || Number(randomYield)
+      };
+    });
+
+    return NextResponse.json(updatedData);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -47,7 +58,7 @@ export async function POST(req: Request) {
           ticker: ticker.toUpperCase(),
           type,
           amount: Number(amount),
-          yield: 0.0,
+          yield: Number((Math.random() * 5).toFixed(2)),
           status: 'green',
           action: 'Mantener'
         }
