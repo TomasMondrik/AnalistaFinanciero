@@ -1,131 +1,89 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ochveebprenwdajsoogp.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_Efd6nLaCOGFfVTP4oBP7uw_Z19sg6YU';
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 export async function GET() {
-  const now = new Date();
-  const timeString = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-
   try {
-    if (process.env.GEMINI_API_KEY) {
-      const prompt = `
-        Sos un terminal financiero en vivo para Merval y Wall Street.
-        Generá 4 noticias breves e impactantes sobre el mercado actual (Dólar CCL, Merval, YPF, Pampa Energía, Galicia, NVIDIA, Apple, Mercado Libre).
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('portfolio')
+      .select('*')
+      .order('created_at', { ascending: true });
 
-        Devolvé ÚNICAMENTE un JSON válido con esta estructura (2 noticias MINE y 2 noticias EXPLORE):
-        [
-          {
-            "id": "1",
-            "source": "El Cronista • Argentina",
-            "time": "${timeString}",
-            "elapsed": "en vivo",
-            "title": "YPF acelera la producción de crudo en Vaca Muerta para exportación",
-            "impactTitle": "Impacto directo en YPFD / PAMP:",
-            "impactDescription": "Incremento de divisas operativas y consolidación de flujo libre de caja.",
-            "type": "MINE",
-            "ticker": "YPFD"
-          },
-          {
-            "id": "2",
-            "source": "Bloomberg • Wall Street",
-            "time": "${timeString}",
-            "elapsed": "en vivo",
-            "title": "NVIDIA sostiene sólida demanda en infraestructura para Inteligencia Artificial",
-            "impactTitle": "Impacto directo en NVDA:",
-            "impactDescription": "Liderazgo tecnológico que fortalece la proyección de ingresos trimestrales.",
-            "type": "MINE",
-            "ticker": "NVDA"
-          },
-          {
-            "id": "3",
-            "source": "Ámbito Financiero • Dólar & Macro",
-            "time": "${timeString}",
-            "elapsed": "en vivo",
-            "title": "El Dólar CCL cotiza con estabilidad por intervención y volumen del BCRA",
-            "impactTitle": "Impacto Clave Macro & CEDEARs:",
-            "impactDescription": "La brecha cambiaria acotada estabiliza la cotización en pesos de CEDEARs.",
-            "type": "EXPLORE",
-            "ticker": "CCL"
-          },
-          {
-            "id": "4",
-            "source": "Rava Bursátil • Merval",
-            "time": "${timeString}",
-            "elapsed": "en vivo",
-            "title": "El índice S&P Merval testea resistencias impulsado por el sector bancario",
-            "impactTitle": "Análisis Renta Variable ARS:",
-            "impactDescription": "Mayor preferencia por activos locales ante la recuperación del crédito privado.",
-            "type": "EXPLORE",
-            "ticker": "GGAL"
-          }
-        ]
-      `;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-      });
+    // Garantizamos valores numéricos válidos en la respuesta sin nulos
+    const sanitizedData = (data || []).map((item) => {
+      const baseYield = item.yield !== null && item.yield !== undefined ? Number(item.yield) : 0.0;
+      return {
+        ...item,
+        yield: Number(baseYield.toFixed(2))
+      };
+    });
 
-      const rawText = response.text || '[]';
-      const newsData = JSON.parse(rawText);
-
-      if (Array.isArray(newsData) && newsData.length > 0) {
-        return NextResponse.json(newsData);
-      }
-    }
-  } catch (error) {
-    console.error('Error procesando noticias:', error);
+    return NextResponse.json(sanitizedData);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
 
-  // Fallback si falla la API
-  return NextResponse.json([
-    {
-      id: '1',
-      source: 'El Cronista • Argentina',
-      time: timeString,
-      elapsed: 'en vivo',
-      title: 'YPF acelera la producción de crudo en Vaca Muerta para exportación',
-      impactTitle: 'Impacto directo en YPFD / PAMP:',
-      impactDescription: 'Incremento de divisas operativas y consolidación de flujo libre de caja.',
-      type: 'MINE',
-      ticker: 'YPFD'
-    },
-    {
-      id: '2',
-      source: 'Bloomberg • Wall Street',
-      time: timeString,
-      elapsed: 'en vivo',
-      title: 'NVIDIA sostiene sólida demanda en infraestructura para Inteligencia Artificial',
-      impactTitle: 'Impacto directo en NVDA:',
-      impactDescription: 'Liderazgo tecnológico que fortalece la proyección de ingresos trimestrales.',
-      type: 'MINE',
-      ticker: 'NVDA'
-    },
-    {
-      id: '3',
-      source: 'Ámbito Financiero • Dólar & Macro',
-      time: timeString,
-      elapsed: 'en vivo',
-      title: 'El Dólar CCL cotiza con estabilidad por intervención y volumen del BCRA',
-      impactTitle: 'Impacto Clave Macro & CEDEARs:',
-      impactDescription: 'La brecha cambiaria acotada estabiliza la cotización en pesos de CEDEARs.',
-      type: 'EXPLORE',
-      ticker: 'CCL'
-    },
-    {
-      id: '4',
-      source: 'Rava Bursátil • Merval',
-      time: timeString,
-      elapsed: 'en vivo',
-      title: 'El índice S&P Merval testea resistencias impulsado por el sector bancario',
-      impactTitle: 'Análisis Renta Variable ARS:',
-      impactDescription: 'Mayor preferencia por activos locales ante la recuperación del crédito privado.',
-      type: 'EXPLORE',
-      ticker: 'GGAL'
+export async function POST(req: Request) {
+  try {
+    const supabase = getSupabase();
+    const body = await req.json();
+    const { ticker, amount, type } = body;
+
+    const { data: existing } = await supabase
+      .from('portfolio')
+      .select('*')
+      .eq('ticker', ticker.toUpperCase())
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('portfolio')
+        .update({ amount: Number(amount), type })
+        .eq('ticker', ticker.toUpperCase());
+    } else {
+      await supabase.from('portfolio').insert([
+        {
+          ticker: ticker.toUpperCase(),
+          type,
+          amount: Number(amount),
+          yield: 0.0,
+          status: 'green',
+          action: 'Mantener'
+        }
+      ]);
     }
-  ]);
+
+    const { data: updated } = await supabase.from('portfolio').select('*');
+    return NextResponse.json(updated || []);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const supabase = getSupabase();
+    const { searchParams } = new URL(req.url);
+    const ticker = searchParams.get('ticker');
+
+    if (ticker) {
+      await supabase.from('portfolio').delete().eq('ticker', ticker.toUpperCase());
+    }
+
+    const { data: updated } = await supabase.from('portfolio').select('*');
+    return NextResponse.json(updated || []);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }

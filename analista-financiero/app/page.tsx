@@ -367,8 +367,8 @@ export default function Home() {
                         <td className="text-right font-mono font-semibold text-slate-200">
                           ARS {Number(item.amount).toLocaleString('es-AR')}
                         </td>
-                        <td className={`text-right font-semibold font-mono ${item.yield >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {item.yield >= 0 ? `+${item.yield}%` : `${item.yield}%`}
+                        <td className={`text-right font-semibold font-mono ${(Number(item.yield) || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {(Number(item.yield) || 0) >= 0 ? `+${Number(item.yield) || 0}%` : `${Number(item.yield) || 0}%`}
                         </td>
                         <td className="text-center">
                           <span className={`text-[10px] px-2.5 py-1 rounded-md border font-semibold ${
